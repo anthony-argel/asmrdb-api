@@ -2,7 +2,10 @@ var express = require('express');
 var router = express.Router();
 const Channel = require('../models/channel');
 const Tag = require('../models/tag');
+const Rating = require('../models/channelrating');
+const Comment = require('../models/comment')
 const {DateTime} = require('luxon');
+const async = require('async');
 
 const {body, validationResult} = require('express-validator');
 const {google} = require('googleapis');
@@ -176,7 +179,30 @@ router.delete('/:id', (req, res, next) => {
 
 // call other data here as well such as tag list
 router.get('/:id/all', (req, res, next) => {
-
+  async.parallel({
+    channel: function(cb) {
+      Channel.findById(req.params.id).exec(cb);
+    },
+    rating: function(cb) {
+      Rating.find({channelid: req.params.id}).exec(cb);
+    },
+    comments: function(cb) {
+      Comment
+      .find({channelid:req.params.id})
+      .populate('authorid', '_id username date')
+      .exec(cb);
+    }
+  },
+    (err, result) => {
+      if(err) {return res.status(400).json({message : "An error occurred"})}
+      let channelRating = 0;
+      for(let i = 0; i < result.rating.length; i++) {
+        channelRating += result.rating[i].rating;
+        channelRating /= result.rating.length;
+      }
+      res.status(200).json({channel: result.channel, rating: channelRating, comments: result.comments, numRaters: result.rating.length});
+    }
+  )
 });
 
 router.get('/:ytchannelid/refresh', (req, res, next) => {

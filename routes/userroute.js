@@ -24,9 +24,14 @@ router.post('/login', function (req, res, next) {
                 res.send(err);
             }
             const token = jwt.sign({user}, process.env.SECRET, {expiresIn:"20h"});
-                return res.json({token});
+                return res.json({token, id: user._id});
             });
     })(req, res);
+});
+
+// verify
+router.get('/verify', passport.authenticate('jwt', {session:false}), (req, res, next) => {
+    res.sendStatus(200);
 });
 
 // get all
