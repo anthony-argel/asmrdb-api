@@ -36,6 +36,8 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(passport.initialize());
 
+const Channel = require('./models/channel');
+
 app.use('/', indexRouter);
 app.use('/magnet', uploadRouter);
 app.use('/tag', tagRouter);

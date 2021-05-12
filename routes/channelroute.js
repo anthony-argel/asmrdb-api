@@ -27,6 +27,19 @@ router.get('/', function(req, res, next) {
   })
 });
 
+
+router.get('/search', (req, res, next) => {
+  console.log(req.query.query);
+  console.log('got in');
+  Channel
+  .find({$text: {$search: req.query.query, $caseSensitive: false}})
+  .sort({score:{$meta: 'textScore'}})
+  .exec((err, results) => {
+    if(err) {return res.status(400).json({err})}
+    return res.status(200).json({results})
+  })
+});
+
 // CRUD
 //create
 router.post('/', passport.authenticate('jwt', {session:false}), [
@@ -197,7 +210,12 @@ router.delete('/:id', passport.authenticate('jwt', {session:false}), (req, res, 
 router.get('/:id/all', (req, res, next) => {
   async.parallel({
     channel: function(cb) {
-      Channel.findById(req.params.id).exec(cb);
+      Channel.findById(req.params.id)
+      .populate({
+        path:'tags',
+        populate: {path:'tags'}
+      })
+      .exec(cb);
     },
     rating: function(cb) {
       Rating.find({channelid: req.params.id}).populate('raterid', '_id username').exec(cb);
@@ -210,9 +228,6 @@ router.get('/:id/all', (req, res, next) => {
     },
     allTags: function(cb) {
       Tag.find().exec(cb);
-    },
-    channelTags: function(cb) {
-      ChannelTag.find({channelid:req.params.id}).populate('tagid').exec(cb);
     }
   },
     (err, result) => {
@@ -245,41 +260,38 @@ router.get('/:ytchannelid/refresh', (req, res, next) => {
 
 // tag stuff, should this be it's own route?
 router.get('/:id/tag', (req, res, next) => {
-  ChannelTag.find({channelid: req.params.id}).populate('tagid').exec((err, result) => {
+  Channel.find({_id: req.params.id}, {tags: 1})
+  ChannelTag.find({channelid: req.params.id}).populate('tags').exec((err, result) => {
     if(err) {return res.sendStatus(400);}
     res.status(200).json({tags: result});
   })
 })
 
 router.post('/:id/tag', passport.authenticate('jwt', {session:false}), (req, res, next) => {
-  ChannelTag
-  .find({channelid: req.params.id, tagid: req.body.tagid})
-  .exec((err, result) => {
-    if(err) {return res.sendStatus(400);}
-    else {
-      if(result.length === 0) {
-        const newChannelTag = new ChannelTag({
-          channelid: req.params.id,
-          tagid: req.body.tagid
-        });
-        newChannelTag.save((err) => {
-          if(err) {return res.sendStatus(400);}
-          
-          res.status(200).json({message: 'tag added!'});
-        })
-      }
-      else {
-        res.sendStatus(200);
-      }
-    }
-  })
+  Tag.findById(req.body.tagid).exec((err, result) => {
+    if(err) {return res.status(400).json({err});}
+    Channel.findOneAndUpdate({_id: req.params.id}, {
+      $addToSet: {
+        tags: {tagid: req.body.tagid, tagname: result.name, _id:req.body.tagid}
+      } 
+    })
+    .exec((err) => {
+      if(err) {return res.status(400).json({err});}
+      res.sendStatus(200);
+    })
+  });
 })
 
 router.delete('/:id/tag',passport.authenticate('jwt', {session:false}), (req, res, next) => {
-  ChannelTag.findByIdAndDelete(req.body.id).exec((err, result) => {
-    if(err) {return res.sendStatus(400);}
-    res.status(200).json({message:'removed tag'});
-  })
+    Channel.findOneAndUpdate({_id: req.params.id}, {
+      $pull: {
+        tags: {tagid: req.body.tagid}
+      } 
+    })
+    .exec((err) => {
+      if(err) {return res.sendStatus(400);}
+      res.sendStatus(200);
+    });
 })
 
 module.exports = router;

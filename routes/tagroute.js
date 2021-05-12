@@ -3,6 +3,7 @@ var router = express.Router();
 
 const Tag = require('../models/tag');
 const ChannelTag = require('../models/channeltag');
+const Channel = require('../models/channel');
 const {DateTime} = require('luxon');
 const async = require('async');
 
@@ -26,9 +27,10 @@ router.get('/', (req, res, next) => {
 });
 
 router.get('/:id/channels', (req, res, next) => {
+    console.log(req.query);
     async.parallel({
         channels: function(cb) {
-            ChannelTag.find({tagid: req.params.id}).populate('channelid').exec(cb);
+            Channel.find({'tags.tagid': req.params.id}).exec(cb);
         },
         tag: function(cb) {
             Tag.findById(req.params.id).exec(cb);
@@ -100,13 +102,6 @@ router.delete('/:id', (req, res, next) => {
     })
 });
 
-const Channel = require('../models/channel');
-router.get('/DELETEME', (req, res, next) => {
-    async.parallel({
-
-    }, (err, results) => {
-        
-    })
-})
+  
 
 module.exports = router;
