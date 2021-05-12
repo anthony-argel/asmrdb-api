@@ -2,16 +2,42 @@ var express = require('express');
 var router = express.Router();
 
 const Tag = require('../models/tag');
+const ChannelTag = require('../models/channeltag');
 const {DateTime} = require('luxon');
+const async = require('async');
 
 const { body, validationResult } = require('express-validator');
 
 // return all tags in the database as a json file
 router.get('/', (req, res, next) => {
-    Tag.find().exec((err, result) => {
-        if(err) { res.status(400).json({message: 'something went wrong'});}
-        else {res.status(200).json({tags: result});}
+    async.parallel({
+        approved: function(callback) {
+            Tag.find({approved: 'true'}).exec(callback);        
+        },
+        waiting: function(callback) {
+            Tag.find({approved: 'false'}).exec(callback);
+        }
+    },
+    (err, results) => {
+        if(err) {return res.sendStatus(400);}
+
+        res.status(200).json({approved: results.approved, waiting: results.waiting})
     })
+});
+
+router.get('/:id/channels', (req, res, next) => {
+    async.parallel({
+        channels: function(cb) {
+            ChannelTag.find({tagid: req.params.id}).populate('channelid').exec(cb);
+        },
+        tag: function(cb) {
+            Tag.findById(req.params.id).exec(cb);
+        }
+    }, (err, results) => {
+        if(err) {return res.sendStatus(400);}
+        res.status(200).json({channels: results.channels, tag: results.tag});
+    })
+    
 });
 
 // CRUD 
@@ -20,14 +46,16 @@ router.post('/', [
     body('name').trim().isLength({min:1}).withMessage('Name must be at least 1 character long').escape(),
     body('description').escape(),
     (req, res, next) => {
+        console.log('got here')
         const errors = validationResult(req);
-        if(errors) {
-            res.status(400).json({errors: errors});
+        if(!errors.isEmpty()) {
+            return res.status(400).json({errors: errors, message:'errors on validation'});
         }
-
+        console.log('got here next');
         const newTag = new Tag({
             name: req.body.name,
             date: DateTime.now(),
+            addreason: req.body.reason,
             description: req.body.description === '' ? undefined : req.body.description
         });
     
@@ -72,5 +100,13 @@ router.delete('/:id', (req, res, next) => {
     })
 });
 
+const Channel = require('../models/channel');
+router.get('/DELETEME', (req, res, next) => {
+    async.parallel({
+
+    }, (err, results) => {
+        
+    })
+})
 
 module.exports = router;

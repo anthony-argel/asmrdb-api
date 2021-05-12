@@ -61,7 +61,7 @@ router.delete('/', passport.authenticate('jwt', {session:false}), (req, res, nex
 
     Comment.findByIdAndDelete(req.body.commentid)
     .exec((err) => {
-        if(err){return res.status(400).json({message:"Something went wrong while deleting that message."})}
+        if(err){return res.status(400).json({message:"Something went wrong while deleting that comment."})}
         res.status(200).json({message:"comment deleted"})
     })
 });

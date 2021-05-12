@@ -15,7 +15,8 @@ router.post('/login', function (req, res, next) {
         if (err || !user) {
             return res.status(400).json({
                 message: 'Something is not right',
-                user : user
+                user : user,
+                errors: info
             });
         }
 
@@ -31,7 +32,7 @@ router.post('/login', function (req, res, next) {
 
 // verify
 router.get('/verify', passport.authenticate('jwt', {session:false}), (req, res, next) => {
-    res.sendStatus(200);
+    res.status(200).json({msg:'ok'});
 });
 
 // get all

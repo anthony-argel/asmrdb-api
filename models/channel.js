@@ -14,7 +14,8 @@ const ChannelSchema = new Schema({
     enddate: {type: Date},
     lastytrefresh: {type:Date, required:true},
     viewcount: {type:Number, required: true},
-    videocount: {type:Number, required: true}
+    videocount: {type:Number, required: true},
+    tags: [Schema.Types.ObjectId]
 });
 
 module.exports = mongoose.model('Channel', ChannelSchema);

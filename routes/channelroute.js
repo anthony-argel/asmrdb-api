@@ -2,6 +2,7 @@ var express = require('express');
 var router = express.Router();
 const Channel = require('../models/channel');
 const Tag = require('../models/tag');
+const ChannelTag = require('../models/channeltag');
 const Rating = require('../models/channelrating');
 const Comment = require('../models/comment')
 const {DateTime} = require('luxon');
@@ -10,6 +11,11 @@ const async = require('async');
 const {body, validationResult} = require('express-validator');
 const {google} = require('googleapis');
 const user = require('../models/user');
+const { route } = require('./tagroute');
+
+const jwt = require('jsonwebtoken');
+const passport = require('passport');
+const bcrypt = require('bcrypt');
 
 /* GET home page. */
 router.get('/', function(req, res, next) {
@@ -23,16 +29,23 @@ router.get('/', function(req, res, next) {
 
 // CRUD
 //create
-router.post('/', [
+router.post('/', passport.authenticate('jwt', {session:false}), [
   body('status').trim().exists(),
   body('niconico').trim(),
   body('youtube').trim().exists(),
   body('twitter').trim(),
-  body('instagram').trim(),
   (req, res, next) => {
     const errors = validationResult(req);
     if(!errors.isEmpty()) {res.status(400).json({message: 'an error occurred'})}
     else {
+      Channel.find({youtube:req.body.youtube}, {_id:1}).exec((err, result) => {
+        if(err) {return res.sendStatus(400)}
+        if (result.length > 0) {
+          return res.status(200).json({channelid: result});
+        }
+      });
+
+
         google.youtube('v3').channels.list({
           "key": process.env.YT_API_KEY,
           "part": [
@@ -66,9 +79,12 @@ router.post('/', [
           });
     
           newChannel.save((err) => {
-            if(err) {res.status(400).json({message: 'an error occurred'})}
+            if(err) {res.status(400).json({message: 'an error occurred here', err})}
             else {
-              res.status(400).json({message: 'channel uploaded'})
+              Channel.find({youtube: req.body.youtube}, {_id:1}).exec((err, result) => {
+                if(err) {return res.sendStatus(400);}
+                  res.status(200).json({channelid: result})
+              })
             }
           })          
 
@@ -89,7 +105,7 @@ router.get('/:id', (req, res, next) => {
 });
 
 // update
-router.put('/:id', [
+router.put('/:id', passport.authenticate('jwt', {session:false}), [
   (req, res, next) => {
     const errors = validationResult(req);
     if(!errors.isEmpty()) {res.status(400).json({message: 'an error occurred'})}
@@ -124,7 +140,7 @@ router.put('/:id', [
 ]);
 
 // refresh youtube data
-router.post('/:id/refresh', (req, res, next) => {
+router.post('/:id/refresh', passport.authenticate('jwt', {session:false}), (req, res, next) => {
   Channel.findById(req.params.id).exec((err, result) => {
     if (err) {res.status(400).json({message:'Unable to find channel in database.'});}
     else {
@@ -167,7 +183,7 @@ router.post('/:id/refresh', (req, res, next) => {
 })
 
 // delete
-router.delete('/:id', (req, res, next) => {
+router.delete('/:id', passport.authenticate('jwt', {session:false}), (req, res, next) => {
   Channel.findByIdAndDelete(req.params.id).exec((err) => {
     if(err) {res.status(400).json({message: 'something went wrong'})}
     else {
@@ -184,23 +200,24 @@ router.get('/:id/all', (req, res, next) => {
       Channel.findById(req.params.id).exec(cb);
     },
     rating: function(cb) {
-      Rating.find({channelid: req.params.id}).exec(cb);
+      Rating.find({channelid: req.params.id}).populate('raterid', '_id username').exec(cb);
     },
     comments: function(cb) {
       Comment
       .find({channelid:req.params.id})
       .populate('authorid', '_id username date')
       .exec(cb);
+    },
+    allTags: function(cb) {
+      Tag.find().exec(cb);
+    },
+    channelTags: function(cb) {
+      ChannelTag.find({channelid:req.params.id}).populate('tagid').exec(cb);
     }
   },
     (err, result) => {
       if(err) {return res.status(400).json({message : "An error occurred"})}
-      let channelRating = 0;
-      for(let i = 0; i < result.rating.length; i++) {
-        channelRating += result.rating[i].rating;
-        channelRating /= result.rating.length;
-      }
-      res.status(200).json({channel: result.channel, rating: channelRating, comments: result.comments, numRaters: result.rating.length});
+      res.status(200).json({allTags:result.allTags, channelTags: result.channelTags, channel: result.channel, comments: result.comments, ratings: result.rating});
     }
   )
 });
@@ -224,5 +241,45 @@ router.get('/:ytchannelid/refresh', (req, res, next) => {
     res.status(200).json({data: response.data});
   }).catch((err) => res.status(400).json({message: 'something went wrong while updating the channel'}))
 }); 
+
+
+// tag stuff, should this be it's own route?
+router.get('/:id/tag', (req, res, next) => {
+  ChannelTag.find({channelid: req.params.id}).populate('tagid').exec((err, result) => {
+    if(err) {return res.sendStatus(400);}
+    res.status(200).json({tags: result});
+  })
+})
+
+router.post('/:id/tag', passport.authenticate('jwt', {session:false}), (req, res, next) => {
+  ChannelTag
+  .find({channelid: req.params.id, tagid: req.body.tagid})
+  .exec((err, result) => {
+    if(err) {return res.sendStatus(400);}
+    else {
+      if(result.length === 0) {
+        const newChannelTag = new ChannelTag({
+          channelid: req.params.id,
+          tagid: req.body.tagid
+        });
+        newChannelTag.save((err) => {
+          if(err) {return res.sendStatus(400);}
+          
+          res.status(200).json({message: 'tag added!'});
+        })
+      }
+      else {
+        res.sendStatus(200);
+      }
+    }
+  })
+})
+
+router.delete('/:id/tag',passport.authenticate('jwt', {session:false}), (req, res, next) => {
+  ChannelTag.findByIdAndDelete(req.body.id).exec((err, result) => {
+    if(err) {return res.sendStatus(400);}
+    res.status(200).json({message:'removed tag'});
+  })
+})
 
 module.exports = router;

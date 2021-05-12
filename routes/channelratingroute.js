@@ -6,7 +6,6 @@ const {DateTime} = require('luxon');
 const ChannelRating = require('../models/channelrating');
 const {body, validationResult} = require('express-validator');
 
-
 // get all 
 router.get('/', (req, res, next) => {
     ChannelRating.find()
@@ -38,7 +37,7 @@ router.post('/:id', passport.authenticate('jwt', {session:false}), [
             }
             else if(result.length >0) {
                 ChannelRating.findOneAndUpdate({channelid: req.params.id, raterid:decoded.user._id},
-                    {rating: req.body.rating}, (err) => {
+                    {rating: req.body.rating, review: req.body.review}, (err) => {
                         if(err) {
                             res.status(400).json({message:err});
                         }
@@ -52,6 +51,7 @@ router.post('/:id', passport.authenticate('jwt', {session:false}), [
                     channelid: req.params.id,
                     raterid: decoded.user._id,
                     rating: req.body.rating,
+                    review: req.body.review,
                     date: DateTime.now()
                 })
 
@@ -88,7 +88,8 @@ router.delete('/:id', passport.authenticate('jwt', {session:false}),
         const userToken = req.headers.authorization;
         const token = userToken.split(' ');
         const decoded = jwt.verify(token[1], process.env.SECRET);
-        ChannelRating.findByIdAndDelete({raterid: decoded.user._id}).exec(err => {
+        
+        ChannelRating.findOneAndDelete({channelid: req.params.id, raterid: decoded.user._id}).exec(err => {
             if(err) {
                 res.status(400).json({message:'error deleting rating.'})
             }
