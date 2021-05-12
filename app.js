@@ -37,6 +37,30 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(passport.initialize());
 
 const Channel = require('./models/channel');
+const Tag = require('./models/tag');
+const User = require('./models/user');
+const async = require('async');
+const ChannelRating = require('./models/channelrating');
+
+app.get('/statistics', (req, res) => {
+  async.parallel({
+    channels: function(cb) {
+      Channel.countDocuments().exec(cb);
+    },
+    tags: function(cb) {
+      Tag.countDocuments().exec(cb);
+    },
+    users: function(cb) {
+      User.countDocuments().exec(cb);
+    },
+    reviews: function(cb) {
+      ChannelRating.countDocuments().exec(cb);
+    }
+  }, (err, results) => {
+    if(err) {return res.sendStatus(400)}
+    res.status(200).json({channels: results.channels, tags: results.tags, users: results.users, reviews: results.reviews})
+  })
+})
 
 app.use('/', indexRouter);
 app.use('/magnet', uploadRouter);

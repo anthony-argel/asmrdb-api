@@ -29,16 +29,25 @@ router.get('/', function(req, res, next) {
 
 
 router.get('/search', (req, res, next) => {
-  console.log(req.query.query);
-  console.log('got in');
   Channel
   .find({$text: {$search: req.query.query, $caseSensitive: false}})
   .sort({score:{$meta: 'textScore'}})
   .exec((err, results) => {
     if(err) {return res.status(400).json({err})}
-    return res.status(200).json({results})
+    res.status(200).json({results})
   })
 });
+
+router.get('/latest', (req, res) => {
+  Channel
+  .find()
+  .sort({_id: -1})
+  .limit(3)
+  .exec((err, results) => {
+    if(err) {return res.sendStatus(400);}
+    res.status(200).json({channels: results});
+  })
+})
 
 // CRUD
 //create

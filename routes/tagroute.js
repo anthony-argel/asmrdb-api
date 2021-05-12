@@ -26,6 +26,17 @@ router.get('/', (req, res, next) => {
     })
 });
 
+router.get('/latest', (req, res) => {
+  Tag
+  .find({approved:true})
+  .sort({_id: -1})
+  .limit(5)
+  .exec((err, results) => {
+    if(err) {return res.sendStatus(400);}
+    res.status(200).json({tags: results});
+  })
+})
+
 router.get('/:id/channels', (req, res, next) => {
     console.log(req.query);
     async.parallel({

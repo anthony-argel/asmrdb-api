@@ -17,6 +17,19 @@ router.get('/', (req, res, next) => {
     })
 });
 
+router.get('/latest', (req, res) => {
+    ChannelRating
+    .find()
+    .populate('raterid', 'username _id')
+    .populate('channelid', 'name _id')
+    .sort({_id: -1})
+    .limit(5)
+    .exec((err, results) => {
+      if(err) {return res.sendStatus(400);}
+      res.status(200).json({reviews: results});
+    })
+  })
+
 // CRUD
 // create and update
 router.post('/:id', passport.authenticate('jwt', {session:false}), [
