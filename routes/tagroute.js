@@ -2,7 +2,6 @@ var express = require('express');
 var router = express.Router();
 
 const Tag = require('../models/tag');
-const ChannelTag = require('../models/channeltag');
 const Channel = require('../models/channel');
 const {DateTime} = require('luxon');
 const async = require('async');

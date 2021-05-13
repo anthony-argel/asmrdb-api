@@ -2,7 +2,6 @@ var express = require('express');
 var router = express.Router();
 const Channel = require('../models/channel');
 const Tag = require('../models/tag');
-const ChannelTag = require('../models/channeltag');
 const Rating = require('../models/channelrating');
 const Comment = require('../models/comment')
 const {DateTime} = require('luxon');
@@ -133,22 +132,20 @@ router.put('/:id', passport.authenticate('jwt', {session:false}), [
     if(!errors.isEmpty()) {res.status(400).json({message: 'an error occurred'})}
     else {
 
+
       const updatedData = {};
 
-      if(req.body.status !== '') {
+      if(typeof req.body.status !== 'undefined' && req.body.status !== '') {
         updatedData.status = req.body.status;
       }
-      if(req.body.niconico !== '') {
+      if(typeof req.body.niconico !=='undefined' && req.body.niconico !== '') {
         updatedData.niconico = req.body.niconico;
       }
-      if(req.body.twitter !== '') {
+      if(typeof req.body.twitter !== 'undefined' && req.body.twitter !== '') {
         updatedData.twitter = req.body.twitter;
       }
-      if(req.body.instagram !== '') {
-        updatedData.instagram = req.body.instagram;
-      }
-      if(typeof req.body.enddate !== 'undefined') {
-        updatedData.enddate = req.body.enddate;
+      if(typeof req.body.aliases !== 'undefined' && req.body.aliases !== '') {
+        updatedData.aliases = req.body.aliases;
       }
 
       Channel.findByIdAndUpdate(req.params.id, updatedData, (err) => {
@@ -161,12 +158,20 @@ router.put('/:id', passport.authenticate('jwt', {session:false}), [
   }
 ]);
 
+
 // refresh youtube data
 router.post('/:id/refresh', passport.authenticate('jwt', {session:false}), (req, res, next) => {
+
+
   Channel.findById(req.params.id).exec((err, result) => {
     if (err) {res.status(400).json({message:'Unable to find channel in database.'});}
     else {
       
+      let dt = DateTime.fromJSDate(result.lastytrefresh);
+      let timeDifference = dt.diffNow('days').as('days');
+      if( timeDifference > -1) {
+        return res.status(400).json({reason: 'Already updated in the last 24 hours'});
+      }
 
   google.youtube('v3').channels.list({
     "key": process.env.YT_API_KEY,
@@ -185,8 +190,7 @@ router.post('/:id/refresh', passport.authenticate('jwt', {session:false}), (req,
   }).then((response) => {
     const data = response.data;
     const updateInfo = {
-      name: data.items[0].snippet.title,
-      aliases: typeof data.items[0].localizations === 'undefined' || typeof data.items[0].localizations.en_US === 'undefined' ? undefined : data.items[0].localizations.en_US.title,
+      name: data.items[0].snippet.title, 
       imageurl: data.items[0].snippet.thumbnails.medium.url,
       lastytrefresh: DateTime.now(),
       viewcount: data.items[0].statistics.viewCount,
@@ -246,35 +250,8 @@ router.get('/:id/all', (req, res, next) => {
   )
 });
 
-router.get('/:ytchannelid/refresh', (req, res, next) => {
-  google.youtube('v3').channels.list({
-    "key": process.env.YT_API_KEY,
-    "part": [
-      "snippet",
-      "contentDetails",
-      "statistics",
-      "contentOwnerDetails",
-      "brandingSettings",
-      "localizations",
-      "brandingSettings"
-    ],
-    "id": [
-      req.params.ytchannelid
-    ]
-  }).then((response) => {
-    res.status(200).json({data: response.data});
-  }).catch((err) => res.status(400).json({message: 'something went wrong while updating the channel'}))
-}); 
-
 
 // tag stuff, should this be it's own route?
-router.get('/:id/tag', (req, res, next) => {
-  Channel.find({_id: req.params.id}, {tags: 1})
-  ChannelTag.find({channelid: req.params.id}).populate('tags').exec((err, result) => {
-    if(err) {return res.sendStatus(400);}
-    res.status(200).json({tags: result});
-  })
-})
 
 router.post('/:id/tag', passport.authenticate('jwt', {session:false}), (req, res, next) => {
   Tag.findById(req.body.tagid).exec((err, result) => {
