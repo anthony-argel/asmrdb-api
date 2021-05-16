@@ -10,9 +10,9 @@ const {body, validationResult} = require('express-validator');
 router.get('/', (req, res, next) => {
     ChannelRating.find()
     .exec((err, results)=>{
-        if(err){res.status(400).json({message:'an error occurred while retrieving ratings'})}
+        if(err){return res.status(400).json({message:'an error occurred while retrieving ratings'})}
         else {
-            res.status(400).json({ratings: results});
+            res.status(200).json({ratings: results});
         }
     })
 });
@@ -33,11 +33,12 @@ router.get('/latest', (req, res) => {
 // CRUD
 // create and update
 router.post('/:id', passport.authenticate('jwt', {session:false}), [
-    body('rating').isInt({min:0, max:10}),
+    body('rating').isInt({min:0, max:10}).exists(),
+    body('review').isString({max:1000}),
     (req, res, next) => {
         const errors = validationResult(req);
         if(!errors.isEmpty()) {
-            return res.status(400).json({errors:errors.array()})
+            return res.sendStatus(400);
         }
 
         const userToken = req.headers.authorization;
@@ -46,16 +47,16 @@ router.post('/:id', passport.authenticate('jwt', {session:false}), [
         ChannelRating.find({channelid: req.params.id, raterid:decoded.user._id})
         .exec((err, result) => {
             if(err) {
-                res.status(400).json({message:err});
+                return res.sendStatus(400);
             }
             else if(result.length >0) {
                 ChannelRating.findOneAndUpdate({channelid: req.params.id, raterid:decoded.user._id},
                     {rating: req.body.rating, review: req.body.review}, (err) => {
                         if(err) {
-                            res.status(400).json({message:err});
+                            return res.sendStatus(400);
                         }
                         else {
-                            res.status(200).json({message:'updated rating.'})
+                            return res.sendStatus(200);
                         }
                     })
             }
@@ -69,9 +70,9 @@ router.post('/:id', passport.authenticate('jwt', {session:false}), [
                 })
 
                 newRating.save((err) => {
-                    if(err) {res.status(400).json({message: err})}
+                    if(err) {return res.sendStatus(400)}
                     else {
-                        res.status(200).json({message:'saved rating'});
+                        return res.sendStatus(200);
                     }
                 })
             }
@@ -84,7 +85,7 @@ router.post('/:id', passport.authenticate('jwt', {session:false}), [
 router.get('/:id', (req, res, next) => {
     ChannelRating.find({channelid:req.params.id})
     .exec((err, results)=> {
-        if(err) {res.status(400).json({message:'an error occurred while retrieving channel rating.'})}
+        if(err) {return res.sendStatus(400)}
         else {
             let ratingCount = 0;
             for(let i = 0; i < results.length; i++) {
@@ -103,12 +104,8 @@ router.delete('/:id', passport.authenticate('jwt', {session:false}),
         const decoded = jwt.verify(token[1], process.env.SECRET);
         
         ChannelRating.findOneAndDelete({channelid: req.params.id, raterid: decoded.user._id}).exec(err => {
-            if(err) {
-                res.status(400).json({message:'error deleting rating.'})
-            }
-            else {
-                res.status(200).json({message:'deleted rating.'})
-            }
+            if(err) {return res.sendStatus(400);}
+                res.sendStatus(200);
         })
 })
 

@@ -37,10 +37,9 @@ router.get('/latest', (req, res) => {
 })
 
 router.get('/:id/channels', (req, res, next) => {
-    console.log(req.query);
     async.parallel({
         channels: function(cb) {
-            Channel.find({'tags.tagid': req.params.id}).exec(cb);
+            Channel.find({'tags._id': req.params.id}).exec(cb);
         },
         tag: function(cb) {
             Tag.findById(req.params.id).exec(cb);
@@ -55,15 +54,13 @@ router.get('/:id/channels', (req, res, next) => {
 // CRUD 
 //create
 router.post('/', [
-    body('name').trim().isLength({min:1}).withMessage('Name must be at least 1 character long').escape(),
-    body('description').escape(),
+    body('name').trim().isString().isLength({min:3, max: 40}).withMessage('Name must be at least 3 characters long').escape(),
+    body('description').isString().isLength({min:3, max:200}),
     (req, res, next) => {
-        console.log('got here')
         const errors = validationResult(req);
         if(!errors.isEmpty()) {
-            return res.status(400).json({errors: errors, message:'errors on validation'});
+            return res.status(400).json({errors: errors});
         }
-        console.log('got here next');
         const newTag = new Tag({
             name: req.body.name,
             date: DateTime.now(),
@@ -72,7 +69,7 @@ router.post('/', [
         });
     
         newTag.save((err) => {
-            if(err) {res.status(400).json({message: 'something went wrong'});}
+            if(err) {return res.status(400).json({message: 'something went wrong'});}
             else {res.status(200).json({message:'tag saved'});}
         });
     }
@@ -91,10 +88,10 @@ router.put('/:id', [
     body('description').trim().exists(),
     (req, res, next) => {
         const errors = validationResult(req);
-        if(!errors.isEmpty()) {res.status(400).json({message: 'something went wrong'})}
+        if(!errors.isEmpty()) {return res.status(400).json({message: 'something went wrong'})}
         else {
             Tag.findByIdAndUpdate(req.params.id, {description: req.body.description}, (err, result) => {
-                if(err) {res.status(400).json({message: 'something went wrong'})}
+                if(err) {return res.status(400).json({message: 'something went wrong'})}
                 else {
                     res.status(200).json({message:'updated description'})
                 }
@@ -107,8 +104,8 @@ router.put('/:id', [
 // delete
 router.delete('/:id', (req, res, next) => {
     Tag.findByIdAndDelete(req.params.id).exec((err) => {
-        if(err) {res.status(400).json({message: 'something went wrong'});}
-        else {res.status(200).json({message:'tag deleted'});}
+        if(err) {return res.sendStatus(400)}
+        else {res.sendStatus(200)}
     })
 });
 

@@ -8,12 +8,10 @@ var cors = require('cors');
 var compression = require('compression');
 var helmet = require('helmet');
 
-var indexRouter = require('./routes/index');
 const channelRouter = require('./routes/channelroute');
 const tagRouter = require('./routes/tagroute');
 const userRouter = require('./routes/userroute');
 const commentRouter = require('./routes/commentroute');
-const uploadRouter = require('./routes/uploadroute');
 const channelRatingRouter = require('./routes/channelratingroute');
 const userRatingRouter = require('./routes/userrattingroute');
 const mongoose = require('mongoose');
@@ -30,6 +28,7 @@ db.on('error', console.error.bind(console, ('connection error: ')));
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
 
+mongoose.set('useFindAndModify', false);
 app.use(helmet());
 app.use(compression()); //Compress all routes
 app.use(cors());
@@ -66,14 +65,12 @@ app.get('/statistics', (req, res) => {
   })
 })
 
-app.use('/', indexRouter);
-app.use('/magnet', uploadRouter);
 app.use('/tag', tagRouter);
 app.use('/channel', channelRouter);
 app.use('/comment', commentRouter);
 app.use('/channelrating', channelRatingRouter);
 app.use('/user', userRouter);
-app.use('/userrating', userRatingRouter);
+//app.use('/userrating', userRatingRouter);
 
 
 // catch 404 and forward to error handler

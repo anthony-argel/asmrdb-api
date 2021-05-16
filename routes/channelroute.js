@@ -19,7 +19,7 @@ const bcrypt = require('bcrypt');
 /* GET home page. */
 router.get('/', function(req, res, next) {
   Channel.find().limit(10).exec((err, results) => {
-    if(err) {res.status(400).json({message: 'an error occurred'})}
+    if(err) {return res.status(400).json({message: 'an error occurred'})}
     else {
       res.status(200).json({channels: results});
     }
@@ -27,15 +27,17 @@ router.get('/', function(req, res, next) {
 });
 
 
-router.get('/search', (req, res, next) => {
-  Channel
-  .find({$text: {$search: req.query.query, $caseSensitive: false}})
-  .sort({score:{$meta: 'textScore'}})
-  .exec((err, results) => {
-    if(err) {return res.status(400).json({err})}
-    res.status(200).json({results})
-  })
-});
+router.get('/search',
+  (req, res, next) => {
+    Channel
+    .find({$text: {$search: req.query.query, $caseSensitive: false}})
+    .sort({score:{$meta: 'textScore'}})
+    .exec((err, results) => {
+      if(err) {return res.status(400).json({err})}
+      res.status(200).json({results})
+    })
+  }
+);
 
 router.get('/latest', (req, res) => {
   Channel
@@ -51,13 +53,13 @@ router.get('/latest', (req, res) => {
 // CRUD
 //create
 router.post('/', passport.authenticate('jwt', {session:false}), [
-  body('status').trim().exists(),
-  body('niconico').trim(),
-  body('youtube').trim().exists(),
-  body('twitter').trim(),
+  body('status').trim().isString().isLength({max:100}).exists(),
+  body('niconico').trim().isString().isLength({max:100}),
+  body('youtube').trim().exists().isString().isLength({max:100}),
+  body('twitter').trim().isString().isLength({max:100}),
   (req, res, next) => {
     const errors = validationResult(req);
-    if(!errors.isEmpty()) {res.status(400).json({message: 'an error occurred'})}
+    if(!errors.isEmpty()) {return res.sendStatus(400)}
     else {
       Channel.find({youtube:req.body.youtube}, {_id:1}).exec((err, result) => {
         if(err) {return res.sendStatus(400)}
@@ -65,8 +67,6 @@ router.post('/', passport.authenticate('jwt', {session:false}), [
           return res.status(200).json({channelid: result});
         }
       });
-
-
         google.youtube('v3').channels.list({
           "key": process.env.YT_API_KEY,
           "part": [
@@ -100,7 +100,7 @@ router.post('/', passport.authenticate('jwt', {session:false}), [
           });
     
           newChannel.save((err) => {
-            if(err) {res.status(400).json({message: 'an error occurred here', err})}
+            if(err) {return res.status(400).json({message: 'an error occurred here', err})}
             else {
               Channel.find({youtube: req.body.youtube}, {_id:1}).exec((err, result) => {
                 if(err) {return res.sendStatus(400);}
@@ -110,7 +110,7 @@ router.post('/', passport.authenticate('jwt', {session:false}), [
           })          
 
 
-        }).catch((err) => {res.status(400).json({message:'something went wrong'});})
+        }).catch((err) => {return res.status(400).json({message:'something went wrong'});})
     }
   }
 ]);
@@ -127,29 +127,31 @@ router.get('/:id', (req, res, next) => {
 
 // update
 router.put('/:id', passport.authenticate('jwt', {session:false}), [
+  body('status').trim().isString().isLength({max:100}),
+  body('niconico').trim().isString().isLength({max:100}),
+  body('aliases').trim().isString().isLength({max:400}),
+  body('twitter').trim().isString().isLength({max:100}),
   (req, res, next) => {
     const errors = validationResult(req);
     if(!errors.isEmpty()) {res.status(400).json({message: 'an error occurred'})}
     else {
-
-
       const updatedData = {};
 
-      if(typeof req.body.status !== 'undefined' && req.body.status !== '') {
+      if(typeof req.body.status !== 'undefined' ) {
         updatedData.status = req.body.status;
-      }
-      if(typeof req.body.niconico !=='undefined' && req.body.niconico !== '') {
+      } 
+      if(typeof req.body.niconico !=='undefined') {
         updatedData.niconico = req.body.niconico;
-      }
-      if(typeof req.body.twitter !== 'undefined' && req.body.twitter !== '') {
+      } 
+      if(typeof req.body.twitter !== 'undefined') {
         updatedData.twitter = req.body.twitter;
       }
-      if(typeof req.body.aliases !== 'undefined' && req.body.aliases !== '') {
+      if(typeof req.body.aliases !== 'undefined') {
         updatedData.aliases = req.body.aliases;
       }
 
       Channel.findByIdAndUpdate(req.params.id, updatedData, (err) => {
-        if(err) {res.status(400).json({message:'an error occurred while updating the channel.'})}
+        if(err) {return res.status(400).json({message:'an error occurred while updating the channel.'})}
         else {
           res.status(200).json({message:'updated channel'})
         }
@@ -161,12 +163,9 @@ router.put('/:id', passport.authenticate('jwt', {session:false}), [
 
 // refresh youtube data
 router.post('/:id/refresh', passport.authenticate('jwt', {session:false}), (req, res, next) => {
-
-
   Channel.findById(req.params.id).exec((err, result) => {
-    if (err) {res.status(400).json({message:'Unable to find channel in database.'});}
+    if (err) {return res.status(400).json({message:'Unable to find channel in database.'});}
     else {
-      
       let dt = DateTime.fromJSDate(result.lastytrefresh);
       let timeDifference = dt.diffNow('days').as('days');
       if( timeDifference > -1) {
@@ -198,20 +197,27 @@ router.post('/:id/refresh', passport.authenticate('jwt', {session:false}), (req,
     };
 
     Channel.findByIdAndUpdate(req.params.id, updateInfo, (err) => {
-      if(err) {res.status(400).json({message:'something went wrong while refreshing the channel data'})}
+      if(err) {return res.status(400).json({message:'something went wrong while refreshing the channel data'})}
       else {
-        res.status(200).json({message:'refreshed channel'})
+        return res.status(200).json({message:'refreshed channel'})
       }
     })          
-  }).catch((err) => {res.status(400).json({message:'something went wrong'});})
+  }).catch((err) => {return res.status(400).json({message:'something went wrong'});})
     }
   })
 })
 
 // delete
 router.delete('/:id', passport.authenticate('jwt', {session:false}), (req, res, next) => {
+
+  const userToken = req.headers.authorization;
+  const token = userToken.split(' ');
+  const decoded = jwt.verify(token[1], process.env.SECRET);
+  if(decoded.user.admin !== true) {
+    return res.sendStatus(403);
+  }
   Channel.findByIdAndDelete(req.params.id).exec((err) => {
-    if(err) {res.status(400).json({message: 'something went wrong'})}
+    if(err) {return res.status(400).json({message: 'something went wrong'})}
     else {
       res.status(200).json({message: 'success'});
     }
@@ -253,25 +259,31 @@ router.get('/:id/all', (req, res, next) => {
 
 // tag stuff, should this be it's own route?
 
-router.post('/:id/tag', passport.authenticate('jwt', {session:false}), (req, res, next) => {
-  Tag.findById(req.body.tagid).exec((err, result) => {
-    if(err) {return res.status(400).json({err});}
-    Channel.findOneAndUpdate({_id: req.params.id}, {
-      $addToSet: {
-        tags: {tagid: req.body.tagid, tagname: result.name, _id:req.body.tagid}
-      } 
-    })
-    .exec((err) => {
-      if(err) {return res.status(400).json({err});}
-      res.sendStatus(200);
-    })
-  });
-})
+router.post('/:id/tag', passport.authenticate('jwt', {session:false}), 
+  [
+    body('tagid').isString().exists(),
+    (req, res, next) => {
+      const errors = validationResult(req);
+      if(!errors.isEmpty()) {return res.sendStatus(400)}
+      Tag.findById(req.body.tagid).exec((err, result) => {
+        if(err) {return res.status(400).json({err});}
+        Channel.findOneAndUpdate({_id: req.params.id}, {
+          $addToSet: {
+            tags: {tagname: result.name, _id:req.body.tagid}
+          } 
+        })
+        .exec((err) => {
+          if(err) {return res.status(400).json({err});}
+          res.sendStatus(200);
+        })
+      });
+    }
+])
 
 router.delete('/:id/tag',passport.authenticate('jwt', {session:false}), (req, res, next) => {
     Channel.findOneAndUpdate({_id: req.params.id}, {
       $pull: {
-        tags: {tagid: req.body.tagid}
+        tags: {_id: req.body.tagid}
       } 
     })
     .exec((err) => {

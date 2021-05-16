@@ -18,7 +18,7 @@ router.get('/', (req, res, next) => {
 // create
 router.post('/', passport.authenticate('jwt', {session:false}), [
     body('channelid').exists(),
-    body('comment').trim().isLength({min:1}),
+    body('comment').trim().isString().isLength({min:0, max:1000}),
     (req, res, next) => {
         const errors = validationResult(req);
         if(!errors.isEmpty()) {return res.status(400).json({errors:errors.array()})}
@@ -55,14 +55,16 @@ router.delete('/', passport.authenticate('jwt', {session:false}), (req, res, nex
     const userToken = req.headers.authorization;
     const token = userToken.split(' ');
     const decoded = jwt.verify(token[1], process.env.SECRET);
-    if(decoded.user.admin !== true && decoded.user._id !== req.body.authorid) {
-        res.status(400).json({message:'unauthorized'})
+    if(req.body.authorid !== decoded.user._id) {
+        if(decoded.user.admin !== true) {
+            return res.sendStatus(400);
+        }
     }
 
     Comment.findByIdAndDelete(req.body.commentid)
     .exec((err) => {
-        if(err){return res.status(400).json({message:"Something went wrong while deleting that comment."})}
-        res.status(200).json({message:"comment deleted"})
+        if(err){return res.sendStatus(400)}
+        res.sendStatus(200)
     })
 });
 
