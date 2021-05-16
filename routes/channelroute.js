@@ -18,7 +18,7 @@ const bcrypt = require('bcrypt');
 
 /* GET home page. */
 router.get('/', function(req, res, next) {
-  Channel.find().limit(10).exec((err, results) => {
+  Channel.find().exec((err, results) => {
     if(err) {return res.status(400).json({message: 'an error occurred'})}
     else {
       res.status(200).json({channels: results});
@@ -26,15 +26,54 @@ router.get('/', function(req, res, next) {
   })
 });
 
+router.get('/limit/:start', function(req, res, next) {
+  let startInd = parseInt(req.params.start);
+  if (typeof startInd !== 'number') {
+    res.sendStatus(404);
+  }
+  if(startInd <= 0) {
+    res.sendStatus(404);
+  }
+  async.parallel({
+    channels: function(cb) {
+      Channel.find().skip(50*(startInd - 1)).limit(50).exec(cb);
+    },
+    totalchannels: function(cb) {
+      Channel.countDocuments().exec(cb);
+    }
+  }, (err, results) => {
+    if(err) {return res.sendStatus(400)}
+    res.status(200).json({channels:results.channels, totalchannels:results.totalchannels})
+  })
+});
 
-router.get('/search',
+
+router.get('/:start/search',
   (req, res, next) => {
-    Channel
-    .find({$text: {$search: req.query.query, $caseSensitive: false}})
-    .sort({score:{$meta: 'textScore'}})
-    .exec((err, results) => {
-      if(err) {return res.status(400).json({err})}
-      res.status(200).json({results})
+    let startInd = parseInt(req.params.start);
+    if (typeof startInd !== 'number') {
+      res.sendStatus(404);
+    }
+    if(startInd <= 0) {
+      res.sendStatus(404);
+    }
+    async.parallel({
+      channels: function(cb) {
+        Channel
+        .find({$text: {$search: req.query.query, $caseSensitive: false}})
+        .sort({score:{$meta: 'textScore'}})
+        .limit(40)
+        .skip(40 * (startInd - 1))
+        .exec(cb);
+      },
+      totalchannels: function(cb) {
+        Channel
+        .countDocuments({$text: {$search: req.query.query, $caseSensitive: false}})
+        .exec(cb)
+      }
+    }, (err, results) => {
+      if(err) {return res.sendStatus(400)}
+      res.status(200).json({channels: results.channels, totalChannels: results.totalchannels})
     })
   }
 );
@@ -162,7 +201,7 @@ router.put('/:id', passport.authenticate('jwt', {session:false}), [
 
 
 // refresh youtube data
-router.post('/:id/refresh', passport.authenticate('jwt', {session:false}), (req, res, next) => {
+router.post('/:id/refresh', (req, res, next) => {
   Channel.findById(req.params.id).exec((err, result) => {
     if (err) {return res.status(400).json({message:'Unable to find channel in database.'});}
     else {

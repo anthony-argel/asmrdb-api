@@ -48,7 +48,30 @@ router.get('/:id/channels', (req, res, next) => {
         if(err) {return res.sendStatus(400);}
         res.status(200).json({channels: results.channels, tag: results.tag});
     })
-    
+});
+
+router.get('/:id/channels/:start', (req, res, next) => {
+    let startInd = parseInt(req.params.start);
+    if (typeof startInd !== 'number') {
+      res.sendStatus(404);
+    }
+    if(startInd <= 0) {
+      res.sendStatus(404);
+    }
+    async.parallel({
+        channels: function(cb) {
+            Channel.find({'tags._id': req.params.id}).skip(40 *(startInd - 1)).limit(40).exec(cb);
+        },
+        tag: function(cb) {
+            Tag.findById(req.params.id).exec(cb);
+        },
+        totalchannels: function(cb) {
+            Channel.countDocuments({'tags._id': req.params.id}).exec(cb);
+        }
+    }, (err, results) => {
+        if(err) {return res.sendStatus(400);}
+        res.status(200).json({channels: results.channels, tag: results.tag, totalchannels: results.totalchannels});
+    })
 });
 
 // CRUD 
