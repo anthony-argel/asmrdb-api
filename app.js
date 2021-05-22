@@ -14,6 +14,8 @@ const userRouter = require('./routes/userroute');
 const commentRouter = require('./routes/commentroute');
 const channelRatingRouter = require('./routes/channelratingroute');
 const userRatingRouter = require('./routes/userrattingroute');
+const boardRouter = require('./routes/boardroute');
+const threadRouter = require('./routes/threadroute');
 const mongoose = require('mongoose');
 const passport = require('passport');
 require('./passport');
@@ -70,6 +72,8 @@ app.use('/channel', channelRouter);
 app.use('/comment', commentRouter);
 app.use('/channelrating', channelRatingRouter);
 app.use('/user', userRouter);
+app.use('/board', boardRouter);
+app.use('/thread', threadRouter);
 //app.use('/userrating', userRatingRouter);
 
 
@@ -86,7 +90,7 @@ app.use(function(err, req, res, next) {
 
   // render the error page
   res.status(err.status || 500);
-  res.render('error');
+  res.send(res.locals.message);
 });
 
 module.exports = app;

@@ -14,7 +14,6 @@ const { route } = require('./tagroute');
 
 const jwt = require('jsonwebtoken');
 const passport = require('passport');
-const bcrypt = require('bcrypt');
 
 /* GET home page. */
 router.get('/', function(req, res, next) {
