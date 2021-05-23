@@ -13,7 +13,7 @@ const {DateTime} = require('luxon');
 const async = require('async');
 
 router.get('/', (req, res) => {
-    Board.find().exec((err, result) => {
+    Board.find({hidden:false}, {_id:1, description:1, name:1}).sort({name:1}).exec((err, result) => {
         if(err) {return res.sendStatus(400)}
         res.status(200).json({boards: result});
     })
@@ -60,6 +60,9 @@ router.get('/:id', (req, res) => {
     Board.findById(req.params.id).exec((err, result) => {
         if(err) {return res.sendStatus(400)}
         async.parallel({
+            board: function(cb) {
+                Board.findById(req.params.id, {name:1, description:1}).exec(cb);
+            },
             deletedThread: function(cb) {
                 Thread.find({board:req.params.id, commentdeleted:true}, {title:1, date:1})
                 .exec(cb);
@@ -71,7 +74,7 @@ router.get('/:id', (req, res) => {
             }
         }, (err, results) => {
             if(err) {return res.sendStatus(400)}
-            res.status(200).json({threads: results.deletedThread.concat(results.threads)})
+            res.status(200).json({board:results.board, threads: results.deletedThread.concat(results.threads)})
         })
     })
 })

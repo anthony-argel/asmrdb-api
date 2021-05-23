@@ -74,7 +74,6 @@ app.use('/channelrating', channelRatingRouter);
 app.use('/user', userRouter);
 app.use('/board', boardRouter);
 app.use('/thread', threadRouter);
-//app.use('/userrating', userRatingRouter);
 
 
 // catch 404 and forward to error handler

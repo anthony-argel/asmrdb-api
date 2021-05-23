@@ -15,7 +15,7 @@ const {DateTime} = require('luxon');
 // CRUD
 router.post('/', passport.authenticate('jwt', {session:false}), [
     body('title').trim().isString().isLength({min:3, max:50}).exists(),
-    body('comment').trim().isString().isLength({max:10000}).exists(),
+    body('comment').trim().isString().isLength({max:10000}),
     body('boardid').trim().isString().exists(),
     (req, res) => {
         const errors = validationResult(req);
@@ -32,9 +32,9 @@ router.post('/', passport.authenticate('jwt', {session:false}), [
             board: req.body.boardid
         })
 
-        newThread.save(err => {
+        newThread.save((err, data) => {
             if(err) {return res.sendStatus(400)}
-            res.sendStatus(200);
+            res.status(200).json({id:data._id});
         })
     }
 ])
@@ -43,22 +43,23 @@ router.post('/', passport.authenticate('jwt', {session:false}), [
 router.get('/:id', (req, res) => {
     async.parallel({
         threaddata: function(cb) {
-            Thread.findById(req.params.id).exec(cb);
+            Thread.findById(req.params.id).populate('author', '_id, username').exec(cb);
         },
         comments: function(cb) {
-            ThreadComment.find({threadid: req.params.id, deleted:false}, {author:1, comment:1, replyingto:1, date:1}).exec(cb);
-        },
+            ThreadComment.find({threadid: req.params.id, deleted:false}, {author:1, comment:1, replyingto:1, date:1}).populate('author', 'username').exec(cb);
+        }
+        ,
         deletedcomments: function(cb) {
             ThreadComment.find({threadid:req.params.id, deleted:true}, {replyingto:1, date:1}).exec(cb);
         }
     }, (err, results) => {
         if(err) {return res.sendStatus(400)}
-        let returnData = { comments: results.comments.concat(results.deletedcomments)};
+        let returnData = { comments: results.comments};
         if(results.threaddata.commentdeleted === true) {
             returnData.threaddata = {title:results.threaddata.title, date:results.threaddata.date}
         }
         else {
-            returnData.threadData = {author: results.threaddata.author, title: results.threaddata.title, 
+            returnData.threaddata = {author: results.threaddata.author, title: results.threaddata.title, 
                 date: results.threaddata.date, comment: results.threaddata.comment}
         }res.status(200).json(returnData)
     })
@@ -142,7 +143,7 @@ router.delete('/:id/comment/:commentid', passport.authenticate('jwt', {session:f
     const token = userToken.split(' ');
     const decoded = jwt.verify(token[1], process.env.SECRET);
 
-    ThreadComment.findOneAndUpdate({_id:commentid, author:decoded.user._id}, {deleted: true}, (err) => {
+    ThreadComment.findOneAndUpdate({_id:req.params.commentid, author:decoded.user._id}, {deleted: true}, (err) => {
         if(err) {return res.sendStatus(400)}
         res.sendStatus(200);
     })
