@@ -11,7 +11,7 @@ const ChannelSchema = new Schema({
     viewcount: {type:Number, required: true},
     videocount: {type:Number, required: true},
     // controlled by user
-    aliases: {type:String, minLength:0, maxLength: 400, match:/^[a-zA-Z0-9_-\s]*$/g},
+    aliases: {type:String, minLength:0, maxLength: 400},
     status: {type: String, enum:['Active', 'Inactive', 'Unknown'], default: 'Active'},
     youtube: {type: String, maxLength:100, match:/^[a-zA-Z0-9_-\s]*$/g},
     niconico: {type: String, maxLength:100, match:/^[a-zA-Z0-9_-\s]*$/g},
