@@ -26,6 +26,16 @@ router.get("/", function (req, res, next) {
     });
 });
 
+router.get("/all", function (req, res, next) {
+    Channel.find().exec((err, results) => {
+        if (err) {
+            return res.status(400).json({ message: "an error occurred" });
+        } else {
+            res.json({ channels: results });
+        }
+    });
+});
+
 router.get("/limit/:start", function (req, res, next) {
     let startInd = parseInt(req.params.start);
     if (typeof startInd !== "number") {
@@ -182,12 +192,10 @@ router.post("/", passport.authenticate("jwt", { session: false }), [
 
                     newChannel.save((err) => {
                         if (err) {
-                            return res
-                                .status(400)
-                                .json({
-                                    message: "an error occurred here",
-                                    err,
-                                });
+                            return res.status(400).json({
+                                message: "an error occurred here",
+                                err,
+                            });
                         } else {
                             Channel.find(
                                 { youtube: req.body.youtube },
@@ -249,12 +257,10 @@ router.put("/:id", passport.authenticate("jwt", { session: false }), [
 
             Channel.findByIdAndUpdate(req.params.id, updatedData, (err) => {
                 if (err) {
-                    return res
-                        .status(400)
-                        .json({
-                            message:
-                                "an error occurred while updating the channel.",
-                        });
+                    return res.status(400).json({
+                        message:
+                            "an error occurred while updating the channel.",
+                    });
                 } else {
                     res.status(200).json({ message: "updated channel" });
                 }
@@ -309,12 +315,10 @@ router.post("/:id/refresh", (req, res, next) => {
                         updateInfo,
                         (err) => {
                             if (err) {
-                                return res
-                                    .status(400)
-                                    .json({
-                                        message:
-                                            "something went wrong while refreshing the channel data",
-                                    });
+                                return res.status(400).json({
+                                    message:
+                                        "something went wrong while refreshing the channel data",
+                                });
                             } else {
                                 return res
                                     .status(200)
