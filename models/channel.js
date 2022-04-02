@@ -26,6 +26,11 @@ const ChannelSchema = new Schema({
             _id: { type: Schema.Types.ObjectId, ref: "Tag", required: true },
         },
     ],
+    tagz: [
+        {
+            name: { type: String, ref: "Tag", required: true },
+        },
+    ],
 });
 
 module.exports = mongoose.model("Channel", ChannelSchema);
