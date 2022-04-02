@@ -124,6 +124,7 @@ router.post("/", passport.authenticate("jwt", { session: false }), [
     body("niconico").trim().isString().isLength({ max: 100 }),
     body("youtube").trim().exists().isString().isLength({ max: 100 }),
     body("twitter").trim().isString().isLength({ max: 100 }),
+    body("aliases").trim().isString().isLength({ max: 400 }),
     (req, res, next) => {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
@@ -188,6 +189,10 @@ router.post("/", passport.authenticate("jwt", { session: false }), [
                         lastytrefresh: DateTime.now(),
                         viewcount: data.items[0].statistics.viewCount,
                         videocount: data.items[0].statistics.videoCount,
+                        aliases:
+                            req.body.aliases !== ""
+                                ? req.body.aliases
+                                : undefined,
                     });
 
                     newChannel.save((err) => {
