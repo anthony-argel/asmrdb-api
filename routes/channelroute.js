@@ -236,7 +236,8 @@ router.get("/:id", (req, res, next) => {
 
 // update
 router.put("/:id", passport.authenticate("jwt", { session: false }), [
-    body("status").trim().isString().isLength({ max: 100 }),
+    body("youtube").trim().exists().isString().isLength({ max: 100 }),
+    body("status").trim().isString().isLength({ max: 100 }).exists(),
     body("niconico").trim().isString().isLength({ max: 100 }),
     body("aliases").trim().isString().isLength({ max: 400 }),
     body("twitter").trim().isString().isLength({ max: 100 }),
@@ -246,7 +247,7 @@ router.put("/:id", passport.authenticate("jwt", { session: false }), [
             res.status(400).json({ message: "an error occurred" });
         } else {
             const updatedData = {};
-
+            updatedData.youtube = req.body.youtube;
             if (typeof req.body.status !== "undefined") {
                 updatedData.status = req.body.status;
             }
