@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
 const ChannelSchema = new Schema({
-    name: { type: String, required: true, minLength: 1, maxLength: 20 },
+    name: { type: String, required: true, minLength: 1, maxLength: 200 },
     imageurl: { type: String },
     instagram: { type: String },
     startdate: { type: Date },
@@ -24,11 +24,6 @@ const ChannelSchema = new Schema({
         {
             name: { type: String, required: true },
             _id: { type: Schema.Types.ObjectId, ref: "Tag", required: true },
-        },
-    ],
-    tagz: [
-        {
-            name: { type: String, ref: "Tag", required: true },
         },
     ],
 });
