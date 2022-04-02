@@ -382,7 +382,7 @@ router.get("/:id/all", (req, res, next) => {
                     .exec(cb);
             },
             allTags: function (cb) {
-                Tag.find().exec(cb);
+                Tag.find({ approved: true }).exec(cb);
             },
         },
         (err, result) => {
