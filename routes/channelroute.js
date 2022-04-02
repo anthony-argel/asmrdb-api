@@ -389,7 +389,6 @@ router.get("/:id/all", (req, res, next) => {
             if (err) {
                 return res.status(400).json({ message: "An error occurred" });
             }
-            console.log(result.channel);
             res.status(200).json({
                 allTags: result.allTags,
                 channelTags: result.channelTags,
